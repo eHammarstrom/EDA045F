@@ -6,5 +6,5 @@ fi
 
 mvn -B archetype:generate \
     -DarchetypeGroupId=org.apache.maven.archetypes \
-    -DgroupId=$1 \
+    -DgroupId=eda045f \
     -DartifactId=$1
