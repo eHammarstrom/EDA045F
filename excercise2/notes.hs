@@ -1,11 +1,20 @@
 module Notes where
 
-import           Prelude hiding (False, True)
+import           Text.Parsec
+import           Text.Parsec.Combinator
+
+import           Data.Either
+import           Prelude                hiding (False, True)
+
+import           Debug.Trace            (trace)
+
+type Program = [Stmt]
 
 data Stmt = Assignment Val Expr
           | If Expr Stmt Stmt
           | Twice Stmt
           | While Expr Stmt
+          | Block [Stmt]
           | Return Expr
           deriving Show
 
@@ -93,6 +102,82 @@ trans stmt inStmts =
 -- in  = node0
 -- out = [[Node]] where [Node] is a path, for every path we may calculate the # of stmt executions
 
+type P = Parsec String ()
+
+-- Parse Common
+natP        :: P Integer
+natP        = do
+  i <- read <$> many1 digit
+  return (dbg i)
+
+idP         :: P String
+idP         = return <$> oneOf "xy"
+
+-- Parse Val
+valP        :: P Val
+valP        = Nat            <$> natP       <|>
+              string "false" *>  pure False <|>
+              string "true"  *>  pure True  <|>
+              Id             <$> idP
+
+-- fulhack to not consume v1 twice
+addP :: P (Val -> Expr)
+addP = (\v2 v1 -> Add v1 v2) <$> (char '+' *> valP)
+
+-- fulhack to not consume v1 twice
+exprP       :: P Expr
+exprP       = do
+  let v = valP
+  try (addP <*> v) <|> Const <$> v
+
+endL        :: P Char
+endL        = char ';'
+
+-- Parse Statements
+twiceP      :: P Stmt
+twiceP      = Twice <$> (string "twice" *> stmtP <* endL)
+
+ifP         :: P Stmt
+ifP         = do
+  string "if"
+  e <- exprP
+  string "then"
+  s1 <- stmtP
+  s2 <- stmtP
+
+  return $ If e s1 s2
+
+whileP      :: P Stmt
+whileP      = string "while" *> (While <$> exprP <*> stmtP)
+
+returnP     :: P Stmt
+returnP     = string "return" *> (Return <$> exprP) <* endL
+
+blockP      :: P Stmt
+blockP      = char '{' *> (Block <$> many1 stmtP) <* char '}'
+
+
+dbg x = trace (show x) x
+
+assignmentP :: P Stmt
+assignmentP = Assignment <$> valP <* char '=' <*> exprP <* endL
+
+stmtP       :: P Stmt
+stmtP       = ifP <|> twiceP <|> whileP <|> returnP <|>
+              blockP <|> assignmentP
+
+-- Parse Program
+programP    :: P Program
+programP    = many1 stmtP
 
 main = do
   print node0
+  programStr <- filter (\e -> not $ elem e " \n") <$> readFile "notes_test.atl"
+  print programStr
+  let pp = parse programP "" programStr
+
+  case pp of
+    Left err      -> print err
+    Right program -> print program
+
+  return ()

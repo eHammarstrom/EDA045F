@@ -1,0 +1,10 @@
+x = 10;
+
+if true then
+    twice x = x + 1;;
+else {
+    twice x = x + 1;;
+    twice x = x + 1;;
+}
+
+return x;
