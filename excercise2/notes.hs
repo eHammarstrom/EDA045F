@@ -121,14 +121,15 @@ valP        = Nat            <$> natP       <|>
               Id             <$> idP
 
 -- fulhack to not consume v1 twice
-addP :: P (Val -> Expr)
-addP = (\v2 v1 -> Add v1 v2) <$> (char '+' *> valP)
+addP :: P Expr
+addP = Add <$> valP <* char '+' <*> valP
+
+constP :: P Expr
+constP = Const <$> valP
 
 -- fulhack to not consume v1 twice
 exprP       :: P Expr
-exprP       = do
-  let v = valP
-  try (addP <*> v) <|> Const <$> v
+exprP       = try addP <|> try constP
 
 endL        :: P Char
 endL        = char ';'
@@ -143,6 +144,7 @@ ifP         = do
   e <- exprP
   string "then"
   s1 <- stmtP
+  string "else"
   s2 <- stmtP
 
   return $ If e s1 s2
@@ -163,8 +165,7 @@ assignmentP :: P Stmt
 assignmentP = Assignment <$> valP <* char '=' <*> exprP <* endL
 
 stmtP       :: P Stmt
-stmtP       = ifP <|> twiceP <|> whileP <|> returnP <|>
-              blockP <|> assignmentP
+stmtP       = choice [ ifP, twiceP, whileP, returnP, blockP, assignmentP ]
 
 -- Parse Program
 programP    :: P Program
