@@ -4,6 +4,7 @@ import           Text.Parsec
 import           Text.Parsec.Combinator
 
 import           Data.Either
+import           Data.Functor
 import           Prelude                hiding (False, True)
 
 import           Debug.Trace            (trace)
@@ -115,9 +116,9 @@ idP         = return <$> oneOf "xy"
 
 -- Parse Val
 valP        :: P Val
-valP        = Nat            <$> natP       <|>
-              string "false" *>  pure False <|>
-              string "true"  *>  pure True  <|>
+valP        = Nat            <$> natP  <|>
+              string "false" $>  False <|>
+              string "true"  $>  True  <|>
               Id             <$> idP
 
 -- fulhack to not consume v1 twice
